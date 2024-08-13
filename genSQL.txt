@@ -1,0 +1,185 @@
+
+=============================================================================================================
+Поиск
+WITH RECURSIVE find_valid_person AS (
+    -- Ищем случайного пользователя
+    SELECT p.id, p.money
+    FROM person p
+    ORDER BY RANDOM()
+    LIMIT 1
+),
+affordable_cars AS (
+    -- Находим машины, которые можно себе позволить
+    SELECT c.id
+    FROM car c, find_valid_person fvp
+    WHERE c.price < fvp.money and c.price > 0
+),
+result AS (
+    -- Если найдены подходящие машины, выводим результат, иначе повторяем выбор пользователя
+    SELECT fvp.id AS user_id, (SELECT ac.id FROM affordable_cars ac ORDER BY RANDOM() LIMIT 1) AS car_id
+    FROM find_valid_person fvp
+    WHERE EXISTS (SELECT 1 FROM affordable_cars)
+    UNION ALL
+    SELECT fvp.id, (SELECT ac.id FROM affordable_cars ac ORDER BY RANDOM() LIMIT 1)
+    FROM find_valid_person fvp
+    WHERE NOT EXISTS (SELECT 1 FROM affordable_cars)
+    LIMIT 1
+)
+SELECT user_id, car_id FROM result;
+
+
+генератор машины !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CREATE OR REPLACE FUNCTION random_string(length INT) RETURNS TEXT AS $$
+DECLARE
+    chars TEXT = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    result TEXT = '';
+    i INT;
+BEGIN
+    FOR i IN 1..length LOOP
+        result := result || substr(chars, (random() * length(chars) + 1)::INT, 1);
+    END LOOP;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+DO $$
+DECLARE
+    max_id integer;
+    new_id integer;
+    random_mark text;
+    random_model text;
+    random_price numeric;
+    engine_type_id integer;
+    person_id integer;
+BEGIN
+    -- Получаем текущее максимальное значение id из таблицы car
+    SELECT COALESCE(MAX(id), 0) INTO max_id FROM car;
+
+    -- Генерируем и вставляем данные в цикле
+    FOR i IN 1..3 LOOP  													-- 3 - количество записей, которые нужно сгенерировать
+        -- Генерация случайных данных
+        random_mark := 'Group2_' || random_string(6);  -- Генерация случайного бренда длиной 6 символов
+        random_model := random_string(6); -- Генерация случайной модели длиной 6 символов
+        random_price := round((random() * (10000000 - 500000) + 500000)::numeric, 2); -- Генерация случайной цены
+
+        -- Получаем случайный engine_type_id
+        SELECT id INTO engine_type_id FROM engine_type ORDER BY random() LIMIT 1;
+
+        -- Получаем случайный person_id
+        SELECT id INTO person_id FROM person ORDER BY random() LIMIT 1;
+
+        -- Вставляем новую запись
+        INSERT INTO car (id, mark, model, price, engine_type_id, person_id)
+        VALUES (
+            max_id + i,          -- Новый id
+            random_mark,         -- Случайный бренд
+            random_model,        -- Случайная модель
+            random_price,        -- Случайная цена
+            engine_type_id,      -- Случайный engine_type_id
+            person_id            -- Случайный person_id
+        );
+    END LOOP;
+END $$;
+
+
+генератор человека !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+-- Функция для генерации случайной строки заданной длины
+CREATE OR REPLACE FUNCTION random_string(length INT) RETURNS TEXT AS $$
+DECLARE
+    chars TEXT = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    result TEXT = '';
+    i INT;
+BEGIN
+    FOR i IN 1..length LOOP
+        result := result || substr(chars, (random() * length(chars) + 1)::INT, 1);
+    END LOOP;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+
+DO $$
+DECLARE
+    max_id integer;
+    new_id integer;
+    house_id integer;
+    random_age integer;
+    random_money numeric;
+    random_sex boolean;
+    random_first_name text;
+    random_second_name text;
+BEGIN
+    -- Получаем текущее максимальное значение id из таблицы person
+    SELECT COALESCE(MAX(id), 0) INTO max_id FROM person;
+
+    -- Генерируем и вставляем данные в цикле
+    FOR i IN 1..5 LOOP  														-- 5 - количество записей, которые нужно сгенерировать
+        -- Генерация случайных данных
+        random_age := floor(random() * (90 - 18 + 1) + 18);
+        random_money := round((random() * (10000000 - 1000) + 1000)::numeric, 2);
+        random_sex := (random() > 0.5);
+        random_first_name := 'Group2_' || random_string(6);-- Генерация случайного имени длиной 6 символов
+        random_second_name := random_string(6); -- Генерация случайной фамилии длиной 6 символов
+        SELECT id INTO house_id FROM house ORDER BY random() LIMIT 1;
+
+        -- 30% вероятность получения NULL для house_id
+--        IF random() > 0.3 THEN
+--            SELECT id INTO house_id FROM house ORDER BY random() LIMIT 1;
+--        ELSE
+--            house_id := NULL;
+--        END IF;
+
+        -- Вставляем новую запись
+        INSERT INTO person (id, age, first_name, money, second_name, sex, house_id)
+        VALUES (
+            max_id + i,          -- Новый id
+            random_age,          -- Случайный возраст
+            random_first_name,   -- Случайное имя
+            random_money,        -- Случайное количество денег
+            random_second_name,  -- Случайная фамилия
+            random_sex,          -- Случайный пол
+            house_id             -- Случайный house_id или NULL
+        );
+    END LOOP;
+END $$;
+ 
+генератор дома !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- Получаем текущее максимальное значение id
+WITH max_id AS (
+    SELECT COALESCE(MAX(id), 0) AS current_max_id FROM house
+)
+-- Генерируем и вставляем новые данные
+INSERT INTO house (id, price, floor_count)
+SELECT
+    current_max_id + row_number() OVER (),                 -- Генерация нового id
+    round((random() * (50000000 - 1000000) + 1000000)::numeric, 2), -- Генерация случайного price в диапазоне от 1,000,000 до 50,000,000
+    floor(random() * (10 + 1))                            -- Генерация случайного floor_count от 0 до 10
+FROM generate_series(1, 3), max_id;											-- 3 - количество записей, которые нужно сгенерировать
+
+генератор парковки !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+DO $$
+DECLARE
+    max_id integer;
+    new_id integer;
+    house_id integer;
+BEGIN
+    -- Получаем текущее максимальное значение id из таблицы parking_place
+    SELECT COALESCE(MAX(id), 0) INTO max_id FROM parking_place;
+
+    -- Генерируем и вставляем данные в цикле
+    FOR i IN 1..2 LOOP  												-- N - количество записей, которые нужно сгенерировать
+        -- Получаем случайный house_id
+        SELECT id INTO house_id FROM house ORDER BY random() LIMIT 1;
+
+        -- Вставляем новую запись
+        INSERT INTO parking_place (id, is_covered, is_warm, places_count, house_id)
+        VALUES (
+            max_id + i,                 -- Новый id
+            (random() < 0.5)::boolean,  -- Случайный is_covered (true или false)
+            (random() < 0.5)::boolean,  -- Случайный is_warm (true или false)
+            floor(random() * 10 + 1),   -- Случайный places_count от 1 до 10
+            house_id                    -- Случайный house_id
+        );
+    END LOOP;
+END $$;
